@@ -1,0 +1,17 @@
+{
+  "name": "contrast-checker",
+  "version": "1.0.0",
+  "description": "WCAG 2.1 contrast ratio checker \u2014 single page, zero dependencies",
+  "main": "contrast.js",
+  "scripts": {
+    "test": "node --test"
+  },
+  "keywords": [
+    "wcag",
+    "accessibility",
+    "contrast",
+    "color"
+  ],
+  "license": "MIT",
+  "private": true
+}

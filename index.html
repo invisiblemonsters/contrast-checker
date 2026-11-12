@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Contrast Checker</title>
+<style>
+  :root {
+    --ink: #e8e6e3;
+    --dim: #8b8985;
+    --line: #2a2a2a;
+    --panel: #161616;
+    --bg: #0b0b0b;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--bg);
+    color: var(--ink);
+    font: 15px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 20px 60px;
+  }
+  header { text-align: center; margin-bottom: 28px; }
+  h1 { font-size: 26px; margin: 0 0 6px; letter-spacing: -0.02em; }
+  header p { margin: 0; color: var(--dim); font-size: 14px; }
+  .card {
+    width: min(720px, 100%);
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    overflow: hidden;
+  }
+  .swatches { display: flex; height: 180px; }
+  .swatch {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding: 14px;
+    gap: 2px;
+    transition: background-color .18s ease;
+  }
+  .swatch .label { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; opacity: .75; }
+  .swatch .code { font: 600 20px/1.2 ui-monospace, "SF Mono", Consolas, monospace; }
+  .readout { padding: 22px; display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
+  .ratio { font: 700 40px/1 ui-monospace, Consolas, monospace; letter-spacing: -0.03em; }
+  .badge {
+    font: 600 12px/1 ui-sans-serif, system-ui, sans-serif;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    padding: 7px 11px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    color: var(--dim);
+  }
+  .badge.pass { color: #052e16; background: #4ade80; border-color: #4ade80; }
+  .badge.fail { color: #fee2e2; background: #7f1d1d; border-color: #7f1d1d; }
+  .checks { padding: 0 22px 22px; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+  .check {
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 11px 13px;
+    font-size: 13px;
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .check b { font-weight: 600; }
+  .check .state { font-weight: 700; }
+  .check .state.yes { color: #4ade80; }
+  .check .state.no { color: #f87171; }
+  .controls { padding: 20px 22px 22px; border-top: 1px solid var(--line); display: grid; gap: 16px; }
+  .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .row label { font-size: 13px; color: var(--dim); min-width: 96px; }
+  input[type="color"] {
+    width: 46px; height: 34px; padding: 0; border: 1px solid var(--line);
+    border-radius: 8px; background: none; cursor: pointer;
+  }
+  input[type="text"] {
+    width: 120px; padding: 9px 11px; border-radius: 8px;
+    border: 1px solid var(--line); background: #0f0f0f; color: var(--ink);
+    font: 500 14px/1 ui-monospace, Consolas, monospace;
+  }
+  input[type="text"]:focus, input[type="color"]:focus { outline: 2px solid #4ade80; outline-offset: 1px; }
+  input.bad { border-color: #f87171; color: #f87171; }
+  .fails { font-size: 13px; color: var(--dim); }
+  .suggestions { display: flex; gap: 8px; flex-wrap: wrap; }
+  button {
+    font: 500 13px/1 ui-sans-serif, system-ui, sans-serif;
+    background: #1f1f1f; color: var(--ink);
+    border: 1px solid var(--line); border-radius: 8px;
+    padding: 9px 12px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;
+  }
+  button:hover { background: #262626; }
+  button .dot { width: 13px; height: 13px; border-radius: 4px; border: 1px solid #0006; }
+  footer { margin-top: 26px; font-size: 12px; color: var(--dim); text-align: center; }
+  a { color: inherit; }
+</style>
+</head>
+<body>
+  <header>
+    <h1>Contrast Checker</h1>
+    <p>WCAG 2.1 ratios for any two colors, computed in your browser.</p>
+  </header>
+
+  <main class="card">
+    <div class="swatches">
+      <div class="swatch" id="fgSwatch">
+        <span class="label">Foreground</span>
+        <span class="code" id="fgCode">#767676</span>
+      </div>
+      <div class="swatch" id="bgSwatch">
+        <span class="label">Background</span>
+        <span class="code" id="bgCode">#ffffff</span>
+      </div>
+    </div>
+
+    <div class="readout">
+      <div class="ratio" id="ratio">4.54:1</div>
+      <div class="badge" id="best">AA</div>
+    </div>
+
+    <div class="checks" id="checks"></div>
+
+    <div class="controls">
+      <div class="row">
+        <label for="fgText">Text color</label>
+        <input type="color" id="fgPick" value="#767676" aria-label="Text color picker">
+        <input type="text" id="fgText" value="#767676" spellcheck="false" aria-label="Text color hex">
+        <label for="bgText">Background</label>
+        <input type="color" id="bgPick" value="#ffffff" aria-label="Background color picker">
+        <input type="text" id="bgText" value="#ffffff" spellcheck="false" aria-label="Background color hex">
+      </div>
+      <div class="row">
+        <label>Swap</label>
+        <button id="swap" type="button">Swap colors</button>
+      </div>
+      <div class="row">
+        <label>Closest fixes</label>
+        <div class="suggestions" id="suggestions"><span class="fails">Already passes AA.</span></div>
+      </div>
+      <div class="fails" id="note">AA needs 4.5:1 for body text, 3:1 for large text.</div>
+    </div>
+  </main>
+
+  <footer>No tracking, no network calls. Ratios follow the WCAG 2.1 relative-luminance formula.</footer>
+
+  <script src="contrast.js"></script>
+  <script>
+    (function () {
+      'use strict';
+
+      var els = {
+        fgPick: document.getElementById('fgPick'),
+        bgPick: document.getElementById('bgPick'),
+        fgText: document.getElementById('fgText'),
+        bgText: document.getElementById('bgText'),
+        fgSwatch: document.getElementById('fgSwatch'),
+        bgSwatch: document.getElementById('bgSwatch'),
+        fgCode: document.getElementById('fgCode'),
+        bgCode: document.getElementById('bgCode'),
+        ratio: document.getElementById('ratio'),
+        best: document.getElementById('best'),
+        checks: document.getElementById('checks'),
+        suggestions: document.getElementById('suggestions'),
+        note: document.getElementById('note'),
+        swap: document.getElementById('swap')
+      };
+
+      var state = { fg: '#767676', bg: '#ffffff' };
+
+      function setBadge(node, ok, text) {
+        node.textContent = text;
+        node.className = 'state ' + (ok ? 'yes' : 'no');
+      }
+
+      function render() {
+        var result = Contrast.analyze(state.fg, state.bg);
+
+        els.fgSwatch.style.background = result.bg;
+        els.fgSwatch.style.color = result.fg;
+        els.bgSwatch.style.background = result.fg;
+        els.bgSwatch.style.color = result.bg;
+        els.fgSwatch.style.borderRight = '1px solid #0006';
+        els.fgCode.textContent = result.fg;
+        els.bgCode.textContent = result.bg;
+        els.ratio.textContent = result.formatted;
+        els.best.textContent = result.best;
+        els.best.className = 'badge ' + (result.aaLarge ? 'pass' : 'fail');
+
+        var rows = [
+          ['AA normal (4.5)', result.aaNormal],
+          ['AAA normal (7)', result.aaaNormal],
+          ['AA large (3)', result.aaLarge],
+          ['AAA large (4.5)', result.aaaLarge]
+        ];
+        els.checks.innerHTML = '';
+        rows.forEach(function (row) {
+          var div = document.createElement('div');
+          div.className = 'check';
+          var name = document.createElement('b');
+          name.textContent = row[0];
+          var stateEl = document.createElement('span');
+          setBadge(stateEl, row[1], row[1] ? 'Pass' : 'Fail');
+          div.appendChild(name);
+          div.appendChild(stateEl);
+          els.checks.appendChild(div);
+        });
+
+        var target = result.aaNormal ? 7 : 4.5;
+        var options = Contrast.suggest(state.fg, state.bg, target);
+        els.suggestions.innerHTML = '';
+        if (!options.length) {
+          var span = document.createElement('span');
+          span.className = 'fails';
+          span.textContent = 'This pair already passes ' + (target === 7 ? 'AAA' : 'AA') + '.';
+          els.suggestions.appendChild(span);
+        } else {
+          options.forEach(function (option) {
+            var button = document.createElement('button');
+            button.type = 'button';
+            button.title = 'Contrast ' + Contrast.formatRatio(option.ratio) + ' (' + option.direction + ')';
+            var dot = document.createElement('span');
+            dot.className = 'dot';
+            dot.style.background = option.color;
+            var text = document.createElement('span');
+            text.textContent = option.color + ' · ' + Contrast.formatRatio(option.ratio);
+            button.appendChild(dot);
+            button.appendChild(text);
+            button.addEventListener('click', function () {
+              setFg(option.color);
+            });
+            els.suggestions.appendChild(button);
+          });
+        }
+
+        els.note.textContent = result.aaNormal
+          ? 'Passes AA for body text. Large text needs only 3:1.'
+          : 'Fails AA for body text — pick a fix above or adjust the color.';
+      }
+
+      function setFg(value) {
+        state.fg = value;
+        var parsed = Contrast.parseHex(value);
+        var hex = Contrast.toHex(parsed);
+        els.fgPick.value = hex;
+        els.fgText.value = hex;
+        render();
+      }
+
+      function setBg(value) {
+        state.bg = value;
+        var parsed = Contrast.parseHex(value);
+        var hex = Contrast.toHex(parsed);
+        els.bgPick.value = hex;
+        els.bgText.value = hex;
+        render();
+      }
+
+      function safe(get, set) {
+        return function (event) {
+          var value = event.target.value;
+          try {
+            get(value);
+            event.target.classList.remove('bad');
+          } catch (err) {
+            event.target.classList.add('bad');
+          }
+        };
+      }
+
+      els.fgPick.addEventListener('input', function (e) { setFg(e.target.value); });
+      els.bgPick.addEventListener('input', function (e) { setBg(e.target.value); });
+      els.fgText.addEventListener('input', safe(setFg));
+      els.bgText.addEventListener('input', safe(setBg));
+      els.swap.addEventListener('click', function () {
+        var fg = state.fg;
+        var bg = state.bg;
+        setBg(fg);
+        setFg(bg);
+      });
+
+      setFg('#767676');
+      setBg('#ffffff');
+    })();
+  </script>
+</body>
+</html>
